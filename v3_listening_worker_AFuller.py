@@ -1,10 +1,8 @@
 """
     This program listens for work messages contiously. 
     Start multiple versions to add more workers.  
-
     Author: Andrew Fuller
     Date: February 25, 2023
-
 """
 
 import pika
@@ -26,14 +24,14 @@ def callback(ch, method, properties, body):
 
 
 # define a main function to run the program
-def main(hn: str = "localhost", qn: str = "task_queue"):
+def main(hn: str = "localhost", qn: str = "andrew_queue"):
     """ Continuously listen for task messages on a named queue."""
 
     # when a statement can go wrong, use a try-except block
     try:
         # try this code, if it works, keep going
         # create a blocking connection to the RabbitMQ server
-        connection = pika.BlockingConnection(pika.ConnectionParameters(host=hn))
+        conn = pika.BlockingConnection(pika.ConnectionParameters(host=hn))
 
     # except, if there's an error, do this
     except Exception as e:
@@ -46,13 +44,13 @@ def main(hn: str = "localhost", qn: str = "task_queue"):
 
     try:
         # use the connection to create a communication channel
-        channel = connection.channel()
+        ch = conn.channel()
 
         # use the channel to declare a durable queue
         # a durable queue will survive a RabbitMQ server restart
         # and help ensure messages are processed in order
         # messages will not be deleted until the consumer acknowledges
-        channel.queue_declare(queue=qn, durable=True)
+        ch.queue_declare(queue=qn, durable=True)
 
         # The QoS level controls the # of messages
         # that can be in-flight (unacknowledged by the consumer)
@@ -62,18 +60,18 @@ def main(hn: str = "localhost", qn: str = "task_queue"):
         # This helps prevent a worker from becoming overwhelmed
         # and improve the overall system performance. 
         # prefetch_count = Per consumer limit of unaknowledged messages      
-        channel.basic_qos(prefetch_count=1) 
+        ch.basic_qos(prefetch_count=1) 
 
         # configure the channel to listen on a specific queue,  
         # use the callback function named callback,
         # and do not auto-acknowledge the message (let the callback handle it)
-        channel.basic_consume( queue=qn, on_message_callback=callback)
+        ch.basic_consume( queue=qn, on_message_callback=callback)
 
         # print a message to the console for the user
         print(" [*] Ready for work. To exit press CTRL+C")
 
         # start consuming messages via the communication channel
-        channel.start_consuming()
+        ch.start_consuming()
 
     # except, in the event of an error OR user stops the process, do this
     except Exception as e:
@@ -87,7 +85,7 @@ def main(hn: str = "localhost", qn: str = "task_queue"):
         sys.exit(0)
     finally:
         print("\nClosing connection. Goodbye.\n")
-        connection.close()
+        conn.close()
 
 
 # Standard Python idiom to indicate main program entry point
@@ -96,4 +94,4 @@ def main(hn: str = "localhost", qn: str = "task_queue"):
 # If this is the program being run, then execute the code below
 if __name__ == "__main__":
     # call the main function with the information needed
-    main("localhost", "task_queue2")
+    main("localhost", "andrew_queue")
